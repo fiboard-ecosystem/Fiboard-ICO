@@ -65,6 +65,14 @@ fiboICO.buyWithUSDT(amount);
 - `startICO()`: Starts the ICO.
 - `withdrawTokens()`: Withdraws remaining tokens to the owner.
 
+## Resources
+
+- [Official Fiboard Website](https://fiboard.org/)
+- [X Account Fiboard](https://x.com/FBDtoken)
+- [Linkdin Account Fiboard](https://www.linkedin.com/company/fbd-foundation/)
+- [ByBit Event](https://www.youtube.com/shorts/UfNhDbusZPY)
+- [Hardhat Documentation](https://hardhat.org/getting-started/)
+
 ## License
 Fiboard
 
