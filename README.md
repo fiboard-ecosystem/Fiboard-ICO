@@ -6,6 +6,7 @@ The FiboTokenICO smart contract facilitates the sale of Fibo tokens using BNB an
 Website: [FiboToken](https://fiboard.org)
 
 Smart Contract Address (BSC): `0x49ac8DDeA22db459EC7f45790553a2650828658C`
+[Link BSC](https://bscscan.com/address/0x49ac8DDeA22db459EC7f45790553a2650828658C)
 
 ## Features
 - Buy Fibo tokens using BNB or USDT.
