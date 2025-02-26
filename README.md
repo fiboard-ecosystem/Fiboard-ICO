@@ -1,6 +1,6 @@
 # FiboToken ICO
 
-## ![Logo Fiboard](files/fiboard.svg) ## Overview
+## ![Logo Fiboard](files/fiboard.svg) Overview
 The FiboTokenICO smart contract facilitates the sale of Fibo tokens using BNB and USDT. The ICO consists of three stages, each with a different token price.
 
 Website: [FiboToken](https://fiboard.org)
