@@ -1,9 +1,9 @@
-# FiboToken ICO
+# Fiboard Token ICO
 
 ## ![Logo Fiboard](files/fiboard.svg) Overview
-The FiboTokenICO smart contract facilitates the sale of Fibo tokens using BNB and USDT. The ICO consists of three stages, each with a different token price.
+The Fiboard Token ICO smart contract facilitates the sale of Fibo tokens using BNB and USDT. The ICO consists of three stages, each with a different token price.
 
-Website: [FiboToken](https://fiboard.org)
+Website: [Fiboard Token](https://fiboard.org)
 
 Smart Contract Address (BSC): `0x49ac8DDeA22db459EC7f45790553a2650828658C`
 [Link BSC](https://bscscan.com/address/0x49ac8DDeA22db459EC7f45790553a2650828658C)
@@ -51,7 +51,7 @@ Smart Contract Address (BSC): `0x49ac8DDeA22db459EC7f45790553a2650828658C`
 ### Buy Tokens with BNB
 Send BNB to the contract:
 ```solidity
-FiboTokenICO.buyWithBNB({ value: amount });
+fiboICO.buyWithBNB({ value: amount });
 ```
 
 ### Buy Tokens with USDT
@@ -69,8 +69,10 @@ fiboICO.buyWithUSDT(amount);
 
 - [Official Fiboard Website](https://fiboard.org/)
 - [X Account Fiboard](https://x.com/FBDtoken)
+- [Youtube Fiboard](https://www.youtube.com/@FBDToken)
 - [Linkdin Account Fiboard](https://www.linkedin.com/company/fbd-foundation/)
 - [ByBit Event](https://www.youtube.com/shorts/UfNhDbusZPY)
+- [Bitcoin MENA Event](https://youtu.be/gJFLXhtjEn8?si=Dlh6lyEBCifTzZCL)
 - [Hardhat Documentation](https://hardhat.org/getting-started/)
 
 ## License
