@@ -1,244 +1,110 @@
-/**
- *Submitted for verification at BscScan.com on 2025-02-23
-*/
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.28;
 
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-interface IERC20 {
-    function balanceOf(address account) external view returns (uint256);
+contract FiboardICO is Ownable {
+    using SafeERC20 for IERC20;
 
-    function transfer(
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-
-    function allowance(
-        address owner,
-        address spender
-    ) external view returns (uint256);
-
-    function transferFrom(
-        address from,
-        address to,
-        uint256 value
-    ) external returns (bool);
-}
-
-contract FiboTokenICO {
-    IERC20 public fibotoken;
-    IERC20 public usdt;
-    AggregatorV3Interface internal priceFeed;
-    address private _owner;
-
-    uint256 public constant STAGE_DURATION = 21 days;
-    uint256 public startTime;
-    uint256 public totalTokensForSale;
-    uint256 public tokensSold;
-
-    address public constant FUNDS_ADDRESS =
-        0xc0Cc068Fd44766ADEFbdBcEb9c685F73D20351e8;
-    address public constant MARKETING_ADDRESS =
-        0xA8FFB0Fd06b50f5329A28b66Fe3954f829624C3d;
-
-    enum Stage {
-        Stage1,
-        Stage2,
-        Stage3,
-        Ended
+    struct History {
+        address wallet;
+        uint256 amount;
+        address token;
     }
 
-    mapping(Stage => uint256) public stagePrices;
-    mapping(Stage => uint256) public tokensSoldPerStage;
+    address private walletAddress;
 
-    event TokensPurchased(
-        address buyer,
-        uint256 amount,
-        uint256 cost,
-        string currency
+    History[] private history;
+    address public usdcStableCoinAddress;
+    address public usdtStableCoinAddress;
+
+    AggregatorV3Interface internal priceFeed;
+
+    event TokensTransferred(
+        address indexed sender,
+        address indexed token,
+        uint256 amount
     );
 
-    constructor(address _token, address _usdt) {
-        fibotoken = IERC20(_token);
-        usdt = IERC20(_usdt);
-
-        //0x1A26d803C2e796601794f8C5609549643832702C In test net
-        //0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE In Main Net
-        priceFeed = AggregatorV3Interface(
-            payable(0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE)
-        );
-        totalTokensForSale = 5_000_000_000 * (10 ** 6);
-        _owner = msg.sender;
-
-        stagePrices[Stage.Stage1] = 8 * 10 ** 15; // 0.008 USD per token
-        stagePrices[Stage.Stage2] = 9 * 10 ** 15; // 0.009 USD per token
-        stagePrices[Stage.Stage3] = 10 * 10 ** 15; // 0.01 USD per token
+    constructor(
+        address _usdtStableCoinAddress,
+        address _usdcStableCoinAddress
+    ) Ownable(msg.sender) {
+        walletAddress = payable(msg.sender);
+        usdtStableCoinAddress = _usdtStableCoinAddress;
+        usdcStableCoinAddress = _usdcStableCoinAddress;
+        priceFeed = AggregatorV3Interface(0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE);
     }
 
-    modifier onlyOwner() {
-        require(_owner == msg.sender, "Ownable: caller is not the owner");
-        _;
-    }
-
-    function startICO() external onlyOwner {
-        require(startTime == 0, "ICO already started");
-        startTime = block.timestamp;
-    }
-
-    function getCurrentStage() public view returns (Stage) {
-        if (startTime == 0) return Stage.Ended;
-        uint256 elapsedTime = block.timestamp - startTime;
-        if (elapsedTime < STAGE_DURATION) return Stage.Stage1;
-        if (elapsedTime < 2 * STAGE_DURATION) return Stage.Stage2;
-        if (elapsedTime < 3 * STAGE_DURATION) return Stage.Stage3;
-        return Stage.Ended;
-    }
-
-    function getLatestBNBPrice() public view returns (uint256) {
+    function getBNBPrice() public view returns (uint256) {
         (, int256 price, , , ) = priceFeed.latestRoundData();
-        return uint256(price) * 10 ** 10; // Adjust decimals (67998020014)
+        return uint256(price);
     }
 
-    function getTokenRateInBNB() public view returns (uint256) {
-        uint256 bnbPrice = getLatestBNBPrice();
-        return (stagePrices[getCurrentStage()] * 1 ether) / bnbPrice;
-    }
-
-    function getTokenRateInUSDT() public view returns (uint256) {
-        return stagePrices[getCurrentStage()];
-    }
-
-    function buyWithBNB() external payable {
-        require(startTime > 0, "ICO not started");
-        require(getCurrentStage() != Stage.Ended, "ICO ended");
-
-        uint256 tokensToBuy = calculateTokens(msg.value, true);
-
-        require(tokensToBuy > 0, "Amount too small");
-        require(
-            tokensSold + tokensToBuy <= totalTokensForSale,
-            "Not enough tokens left"
-        );
-
-        uint256 contractBalance = fibotoken.balanceOf(address(this));
-        require(
-            contractBalance >= tokensToBuy,
-            "Not enough tokens available in contract"
-        );
-
-        tokensSold += tokensToBuy;
-        tokensSoldPerStage[getCurrentStage()] += tokensToBuy;
-
-        require(fibotoken.transfer(msg.sender, tokensToBuy), "Transfer failed");
-
-        // Send 10% to marketing address
-        uint256 marketingAmount = msg.value / 10;
-        payable(MARKETING_ADDRESS).transfer(marketingAmount);
-
-        // Send 90% to FUNDS_ADDRESS
-        uint256 remainingAmount = msg.value - marketingAmount;
-        payable(FUNDS_ADDRESS).transfer(remainingAmount);
-
-        emit TokensPurchased(msg.sender, tokensToBuy, msg.value, "BNB");
-    }
-
-    function buyWithUSDT(uint256 usdtAmount) external {
-        require(startTime > 0, "ICO not started");
-        require(getCurrentStage() != Stage.Ended, "ICO ended");
-
-        uint256 tokensToBuy = calculateTokens(usdtAmount, false);
-
-        require(tokensToBuy > 0, "Amount too small");
-        require(
-            tokensSold + tokensToBuy <= totalTokensForSale,
-            "Not enough tokens left"
-        );
-
-        uint256 contractBalance = fibotoken.balanceOf(address(this));
-        require(
-            contractBalance >= tokensToBuy,
-            "Not enough tokens available in contract"
-        );
-
-        require(
-            usdt.transferFrom(msg.sender, address(this), usdtAmount),
-            "USDT transfer failed"
-        );
-
-        tokensSold += tokensToBuy;
-        tokensSoldPerStage[getCurrentStage()] += tokensToBuy;
-
-        require(
-            fibotoken.transfer(msg.sender, tokensToBuy),
-            "Token transfer failed"
-        );
-
-        // Send 10% to marketing address
-        uint256 marketingAmount = usdtAmount / 10;
-        require(
-            usdt.transfer(MARKETING_ADDRESS, marketingAmount),
-            "Marketing transfer failed"
-        );
-
-        // Send 90% to FUNDS_ADDRESS
-        uint256 remainingAmount = usdtAmount - marketingAmount;
-        require(
-            usdt.transfer(FUNDS_ADDRESS, remainingAmount),
-            "Remaining funds transfer failed"
-        );
-
-        emit TokensPurchased(msg.sender, tokensToBuy, usdtAmount, "USDT");
-    }
-
-    function tokensSoldInStage(uint256 _stage) external view returns (uint256) {
-        require(_stage >= 1 && _stage <= 3, "Invalid stage");
-        return tokensSoldPerStage[Stage(_stage - 1)];
-    }
-
-    function getTokenBalance() external view returns (uint256) {
-        return fibotoken.balanceOf(address(this));
-    }
-
-    function calculateTokens(
-        uint256 amount,
-        bool isBNB
-    ) public view returns (uint256) {
-        require(startTime > 0, "ICO not started");
-        require(getCurrentStage() != Stage.Ended, "ICO ended");
-
-        uint256 tokensToBuy;
-
-        if (isBNB) {
-            uint256 bnbPrice = getLatestBNBPrice(); // Assuming this returns BNB price in USD with 18 decimals
-            uint256 tokenPriceInBNB = (stagePrices[getCurrentStage()] * 1e18) /
-                bnbPrice;
-            tokensToBuy = (amount * 1e6) / tokenPriceInBNB; // Adjust for 8 decimals of Fibo
+    function buyTokens(
+        address tokenAddress,
+        uint256 amount
+    ) external payable {
+        uint256 valueSent = msg.value;
+        if (valueSent > 0 && tokenAddress == address(0)) {
+            (bool sent, ) = walletAddress.call{value: valueSent}("");
+            require(sent, "BNB transfer failed");
+            history.push(
+                History(msg.sender, amount, address(0))
+            );
+            emit TokensTransferred(msg.sender, tokenAddress, amount);
         } else {
-            tokensToBuy = (amount * 1e6) / stagePrices[getCurrentStage()]; // Adjust for 8 decimals of Fibo
+            require(tokenAddress != address(0), "Invalid token address");
+            require(amount > 0, "Amount must be > 0");
+            if (_isStableCoin(tokenAddress)) {
+                IERC20 token = IERC20(tokenAddress);
+                token.safeTransferFrom(msg.sender, walletAddress, amount);
+                history.push(
+                    History(msg.sender, amount, tokenAddress)
+                );
+                emit TokensTransferred(msg.sender, tokenAddress, amount);
+            }
         }
-
-        require(tokensToBuy > 0, "Amount too small");
-        return tokensToBuy;
     }
 
-    function withdrawTokens() external onlyOwner {
-        fibotoken.transfer(_owner, fibotoken.balanceOf(address(this)));
+
+    function getHistory() external view returns (History[] memory) {
+        return history;
     }
-}
 
-interface AggregatorV3Interface {
-  function decimals() external view returns (uint8);
+    function setUsdcStableCoinAddress(address _usdcStableCoinAddress) external onlyOwner {
+        usdcStableCoinAddress = _usdcStableCoinAddress;
+    }
 
-  function description() external view returns (string memory);
+    function setUsdtStableCoinAddress(address _usdtStableCoinAddress) external onlyOwner {
+        usdtStableCoinAddress = _usdtStableCoinAddress;
+    }
 
-  function version() external view returns (uint256);
+    function _isStableCoin(address _token) private view returns (bool) {
+        return _token == usdcStableCoinAddress || _token == usdtStableCoinAddress;
+    }
 
-  function getRoundData(
-    uint80 _roundId
-  ) external view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+    function updateWalletAddress(address newAddress) external onlyOwner {
+        walletAddress = newAddress;
+    }
 
-  function latestRoundData()
-    external
-    view
-    returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+    function getWalletAddress() external view onlyOwner returns (address) {
+        return walletAddress;
+    }
+
+    function withdrawERC20(address token) external onlyOwner {
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        IERC20(token).safeTransfer(msg.sender, balance);
+    }
+
+    function withdrawBNB() external onlyOwner {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No BNB balance to withdraw");
+
+        (bool sent, ) = walletAddress.call{value: balance}("");
+        require(sent, "Failed to withdraw BNB");
+    }
 }
